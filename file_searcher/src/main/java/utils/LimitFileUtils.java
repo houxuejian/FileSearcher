@@ -9,6 +9,9 @@ import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
+/**
+ * 修改org.apache.commons.io.FileUtils
+ */
 public class LimitFileUtils {
 
 	public static Collection<File> listFilesAndDirs(File directory, IOFileFilter fileFilter, IOFileFilter dirFilter, int depthLimit) {
@@ -20,9 +23,6 @@ public class LimitFileUtils {
 		Collection<File> files = new java.util.LinkedList<File>();
 		if (directory.isDirectory()) {
 			files.add(directory);
-		}
-		if (depthLimit == -1) {
-			innerListFiles(files, directory, FileFilterUtils.or(effFileFilter, effDirFilter), true);
 		}
 		innerListFiles(files, directory, FileFilterUtils.or(effFileFilter, effDirFilter), true, depthLimit);
 		return files;
@@ -36,9 +36,6 @@ public class LimitFileUtils {
 
 		// Find files
 		Collection<File> files = new java.util.LinkedList<File>();
-		if (depthLimit == -1) {
-			innerListFiles(files, directory, FileFilterUtils.or(effFileFilter, effDirFilter), false);
-		}
 		innerListFiles(files, directory, FileFilterUtils.or(effFileFilter, effDirFilter), false, depthLimit);
 		return files;
 	}
@@ -63,22 +60,6 @@ public class LimitFileUtils {
 					if (depthLimit > 0) {
 						innerListFiles(files, file, filter, includeSubDirectories, depthLimit - 1);
 					}
-				} else {
-					files.add(file);
-				}
-			}
-		}
-	}
-
-	private static void innerListFiles(Collection<File> files, File directory, IOFileFilter filter, boolean includeSubDirectories) {
-		File[] found = directory.listFiles((FileFilter) filter);
-		if (found != null) {
-			for (File file : found) {
-				if (file.isDirectory()) {
-					if (includeSubDirectories) {
-						files.add(file);
-					}
-					innerListFiles(files, file, filter, includeSubDirectories);
 				} else {
 					files.add(file);
 				}

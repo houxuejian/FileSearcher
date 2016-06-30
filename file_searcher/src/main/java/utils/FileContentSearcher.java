@@ -13,11 +13,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public enum FileContentSearcher {
 	INSTANCE;
+	private ExecutorService threadPool;
+	private int maxPoolSize = 50;
 	
 	class Runner implements Callable<File> {
 		private File file;
@@ -65,10 +68,15 @@ public enum FileContentSearcher {
 	 * @param reg
 	 * @param charsets
 	 * @return
+	 * @throws Exception 
 	 */
-	public List<File> parallelSearch(Collection<File> files, String patternStr, boolean reg, Charset... charsets) {
+	public List<File> parallelSearch(Collection<File> files, String patternStr, boolean reg, Charset... charsets) throws InterruptedException, ExecutionException {
 		List<File> fileList = new CopyOnWriteArrayList<>();
-		Pattern pattern = Pattern.compile(patternStr);
+		Pattern pattern = null;
+		try {
+			pattern = Pattern.compile(patternStr);
+		} catch (Exception e) {
+		}
 
 		List<Callable<File>> callables = new ArrayList<>();
 		for (File file : files) {
@@ -76,24 +84,35 @@ public enum FileContentSearcher {
 			callables.add(callable);
 		}
 
-		ExecutorService threadPool = Executors.newFixedThreadPool(files.size() < 50 ? files.size() : 50);
+		this.threadPool = Executors.newFixedThreadPool(files.size() < this.maxPoolSize ? files.size() : this.maxPoolSize);
 
 		try {
-			List<Future<File>> futures = threadPool.invokeAll(callables);
+			List<Future<File>> futures = this.threadPool.invokeAll(callables, Long.MAX_VALUE, TimeUnit.SECONDS);
 			for (Future<File> future : futures) {
 				File file = future.get();
 				if (null != file) {
 					fileList.add(file);
 				}
 			}
-		} catch (InterruptedException e) {
+		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
-		} catch (ExecutionException e) {
-			e.printStackTrace();
+			throw e;
 		} finally {
-			threadPool.shutdown();
+			this.threadPool.shutdown();
 		}
 		return fileList;
+	}
+
+	public ExecutorService getThreadPool() {
+		return threadPool;
+	}
+
+	public int getMaxPoolSize() {
+		return maxPoolSize;
+	}
+
+	public void setMaxPoolSize(int maxPoolSize) {
+		this.maxPoolSize = maxPoolSize;
 	}
 	
 }
